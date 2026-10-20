@@ -8,19 +8,19 @@
 :root {
   --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f1f3f6; --border: #dde1e7; --text: #1b1f24; --muted: #6a7380;
   --accent: #3b5bdb; --accent-soft: #e7ecfd; --up: #1c7ed6; --down: #2b8a3e; --warn: #c2410c;
-  --edge: #b6bdc8; --edge-hi: #3b5bdb; --hover: #eef1f5;
+  --edge: #b6bdc8; --edge-hi: #3b5bdb; --hover: #eef1f5; --mid: #868e96; --dot: #cfd4db;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111418; --panel: #181c21; --panel-2: #1f242b; --border: #2c333c; --text: #e4e7eb; --muted: #8b95a3;
     --accent: #7c95f5; --accent-soft: #232c4a; --up: #4dabf7; --down: #51cf66; --warn: #fb923c;
-    --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830;
+    --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830; --mid: #8b95a3; --dot: #363e48;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111418; --panel: #181c21; --panel-2: #1f242b; --border: #2c333c; --text: #e4e7eb; --muted: #8b95a3;
   --accent: #7c95f5; --accent-soft: #232c4a; --up: #4dabf7; --down: #51cf66; --warn: #fb923c;
-  --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830;
+  --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830; --mid: #8b95a3; --dot: #363e48;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -63,8 +63,9 @@ header .status { color: var(--muted); margin-left: auto; font-size: 12px; }
 .gbar { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; font-size: 12px; }
 .gbar label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
 .legend { margin-left: auto; display: flex; gap: 10px; color: var(--muted); }
-.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-svg#g { flex: 1; width: 100%; min-height: 0; cursor: grab; user-select: none; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+svg#g { flex: 1; width: 100%; min-height: 0; cursor: grab; user-select: none;
+  background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.2px); background-size: 20px 20px; }
 svg#g.drag { cursor: grabbing; }
 .gmsg { position: absolute; inset: 50px 0 0 0; display: flex; align-items: center; justify-content: center; color: var(--muted); pointer-events: none; text-align: center; padding: 20px; }
 .e { fill: none; stroke: var(--edge); stroke-width: 1.3; }
@@ -79,6 +80,14 @@ svg#g.drag { cursor: grabbing; }
 .n .tag { font-size: 9px; font-weight: 700; letter-spacing: .04em; }
 .n .tag.src { fill: var(--up); } .n .tag.leaf { fill: var(--down); }
 .n.dim { opacity: .35; }
+.n circle { fill: var(--mid); stroke: var(--panel); stroke-width: 1.5; }
+.n.k-src circle { fill: var(--up); } .n.k-leaf circle { fill: var(--down); } .n.k-iso circle { fill: var(--muted); }
+.n.focus circle { fill: var(--accent); stroke: var(--accent-soft); stroke-width: 5; }
+.n.match circle { stroke: var(--warn); stroke-width: 3; }
+.n:hover circle { stroke: var(--accent); stroke-width: 3; }
+.n .lbl { fill: var(--text); font-size: 11px; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+.n.focus .lbl { font-weight: 700; font-size: 12px; }
+.n.pinned circle { stroke-dasharray: 2 2; stroke: var(--text); }
 
 /* details */
 .detail { border-left: 1px solid var(--border); overflow: auto; background: var(--panel); padding: 14px 16px; }
@@ -163,11 +172,12 @@ details.sec summary button { margin-left: auto; font-size: 11px; padding: 1px 6p
     </aside>
     <section class="graph">
       <div class="gbar">
+        <label>View <select id="layout"><option value="force">Node diagram</option><option value="cols">Columns</option></select></label>
         <label>Upstream <select id="du"><option>1</option><option>2</option><option>3</option><option>5</option><option value="99" selected>All</option></select></label>
         <label>Downstream <select id="dd"><option>1</option><option>2</option><option>3</option><option>5</option><option value="99" selected>All</option></select></label>
         <button id="btnFit">Fit</button>
         <button id="btnAll">Whole graph</button>
-        <div class="legend"><span><i style="background:var(--up)"></i>SRC = no upstream</span><span><i style="background:var(--down)"></i>LEAF = no downstream</span></div>
+        <div class="legend"><span><i style="background:var(--up)"></i>Source (no upstream)</span><span><i style="background:var(--down)"></i>Leaf (no downstream)</span><span><i style="background:var(--accent)"></i>Selected</span></div>
       </div>
       <svg id="g"><defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--edge)"/></marker><marker id="arh" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--edge-hi)"/></marker></defs><g id="vp"></g></svg>
       <div class="gmsg" id="gmsg"></div>
@@ -545,11 +555,14 @@ const MAX_NODES = 1500;
 function renderGraph() {
   const vp = $('vp'), msg = $('gmsg');
   msg.textContent = '';
+  stopSim();
   if (!G.nodes.size) { vp.innerHTML = ''; msg.textContent = 'Load some lineage data to begin.'; return; }
   if (!overview && !focusName) { vp.innerHTML = ''; msg.textContent = 'Pick a table on the left.'; return; }
   const layer = overview ? overviewLayout() : focusLayout();
   if (layer.size > MAX_NODES) { vp.innerHTML = ''; msg.textContent = `${layer.size.toLocaleString()} tables is too many to draw. ${overview ? 'Focus on a single table instead.' : 'Lower the upstream/downstream depth.'}`; lastXY = new Map(); return; }
-  const xy = layered(layer); lastXY = xy;
+  const xy = layered(layer);
+  if ($('layout').value === 'force') { lastXY = new Map(); renderForce(layer, xy); return; }
+  lastXY = xy;
   let e = '', nds = '';
   for (const [n, p] of xy) {
     for (const c of G.nodes.get(n).down) {
@@ -571,17 +584,123 @@ function renderGraph() {
 }
 const trunc = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
 
+// ---------- force-directed node diagram ----------
+// Upstream drifts left and downstream right (a weak pull toward each node's column), so flow still reads left to right.
+const SPAN = 140;
+let sim = null;
+function stopSim() { if (sim?.raf) cancelAnimationFrame(sim.raf); sim = null; }
+
+function renderForce(layer, xy) {
+  const ids = [...layer.keys()];
+  const idx = new Map(ids.map((n, i) => [n, i]));
+  const nodes = ids.map(n => {
+    const g = G.nodes.get(n), deg = g.up.size + g.down.size;
+    return { id: n, L: layer.get(n), x: layer.get(n) * SPAN + (Math.random() - .5) * 20, y: xy.get(n).y * 0.6 + (Math.random() - .5) * 20,
+      vx: 0, vy: 0, fx: null, fy: null, r: n === focusName ? 12 : 5 + Math.min(7, Math.sqrt(deg) * 1.6), kind: g.kind };
+  });
+  const minL = Math.min(...nodes.map(n => n.L));
+  if (overview) for (const n of nodes) { n.L -= minL; n.x = n.L * SPAN; }
+  const f = nodes[idx.get(focusName)];
+  if (f && !overview) { f.fx = f.x = 0; f.fy = f.y = 0; }
+  const links = [];
+  for (const n of ids) for (const c of G.nodes.get(n).down) if (idx.has(c)) links.push({ s: nodes[idx.get(n)], t: nodes[idx.get(c)] });
+
+  let e = '', nds = '';
+  for (const l of links) e += `<path class="e" data-u="${esc(l.s.id)}" data-d="${esc(l.t.id)}" marker-end="url(#ar)"/>`;
+  for (const n of nodes) {
+    const g = G.nodes.get(n.id), [, t] = splitName(n.id);
+    nds += `<g class="n k-${n.kind} ${n.id === focusName ? 'focus' : ''}" data-n="${esc(n.id)}"><title>${esc(n.id)}\n↑ ${g.up.size} upstream · ↓ ${g.down.size} downstream</title><circle r="${n.r}"/><text class="lbl" x="${n.r + 4}" y="4">${esc(trunc(t, 30))}</text></g>`;
+  }
+  const vp = $('vp');
+  vp.innerHTML = e + nds;
+  const paths = [...vp.querySelectorAll('.e')], gs = [...vp.querySelectorAll('.n')];
+  sim = { nodes, links, paths, gs, byId: new Map(nodes.map((n, i) => [n.id, n])), alpha: 1, raf: 0 };
+  for (let i = 0; i < 60; i++) tick(); // settle a bit before first paint
+  draw(); fit(); kick(0.6);
+  highlightMatches($('q').value.toLowerCase().split(/\s+/).filter(Boolean));
+}
+
+function tick() {
+  const { nodes, links } = sim, a = sim.alpha, n = nodes.length;
+  for (let i = 0; i < n; i++) {
+    const p = nodes[i];
+    for (let j = i + 1; j < n; j++) {
+      const q = nodes[j];
+      let dx = q.x - p.x, dy = q.y - p.y, d2 = dx * dx + dy * dy;
+      if (d2 > 160000) continue;
+      if (d2 < 1) { dx = Math.random() - .5; dy = Math.random() - .5; d2 = 1; }
+      const k = 700 * a / d2;
+      p.vx -= dx * k; p.vy -= dy * k; q.vx += dx * k; q.vy += dy * k;
+    }
+  }
+  for (const { s, t } of links) {
+    const dx = t.x - s.x, dy = t.y - s.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+    const k = (d - 60) / d * 0.06 * a;
+    s.vx += dx * k; s.vy += dy * k; t.vx -= dx * k; t.vy -= dy * k;
+  }
+  for (const p of nodes) {
+    p.vx += (p.L * SPAN - p.x) * 0.04 * a;
+    p.vy += -p.y * (p.kind === 'iso' ? 0.06 : 0.015) * a;
+    if (p.kind === 'iso') p.vx += -p.x * 0.06 * a;
+    p.vx *= 0.6; p.vy *= 0.6;
+    if (p.fx != null) { p.x = p.fx; p.y = p.fy; p.vx = p.vy = 0; } else { p.x += p.vx; p.y += p.vy; }
+  }
+  sim.alpha *= 0.985;
+}
+
+function draw() {
+  const { nodes, links, paths, gs } = sim;
+  nodes.forEach((p, i) => gs[i].setAttribute('transform', `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`));
+  links.forEach(({ s, t }, i) => {
+    const dx = t.x - s.x, dy = t.y - s.y, d = Math.sqrt(dx * dx + dy * dy) || 1, ux = dx / d, uy = dy / d;
+    paths[i].setAttribute('d', `M${(s.x + ux * s.r).toFixed(1)},${(s.y + uy * s.r).toFixed(1)} L${(t.x - ux * (t.r + 2)).toFixed(1)},${(t.y - uy * (t.r + 2)).toFixed(1)}`);
+  });
+}
+
+function kick(alpha) {
+  if (!sim) return;
+  sim.alpha = Math.max(sim.alpha, alpha);
+  if (sim.raf) return;
+  const s = sim;
+  const loop = () => {
+    if (sim !== s) return;
+    tick(); tick(); draw();
+    if (!view.touched && !s.dragging) fit();
+    s.raf = s.alpha > 0.005 || s.dragging ? requestAnimationFrame(loop) : 0;
+  };
+  s.raf = requestAnimationFrame(loop);
+}
+
+function bounds() {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  if (sim) for (const p of sim.nodes) {
+    const lw = 4 + Math.min(30, splitName(p.id)[1].length) * 6.2;
+    x0 = Math.min(x0, p.x - p.r); y0 = Math.min(y0, p.y - p.r); x1 = Math.max(x1, p.x + p.r + lw); y1 = Math.max(y1, p.y + p.r);
+  }
+  else for (const p of lastXY.values()) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + NW); y1 = Math.max(y1, p.y + NH); }
+  return x0 === Infinity ? null : { x0, y0, x1, y1 };
+}
+
 function highlightMatches(terms) {
   const any = terms.length > 0;
   for (const g of $('vp').querySelectorAll('.n')) g.classList.toggle('match', any && matches(g.dataset.n, terms) && g.dataset.n !== focusName);
 }
 
-function applyView() { $('vp').setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`); }
+function applyView() {
+  $('vp').setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`);
+  // dot grid follows pan/zoom; spacing doubles back once dots get too dense or sparse
+  let s = 20 * view.k;
+  while (s < 12) s *= 2;
+  while (s > 40) s /= 2;
+  const bg = $('g').style;
+  bg.backgroundSize = `${s}px ${s}px`;
+  bg.backgroundPosition = `${view.x}px ${view.y}px`;
+}
 function fit() {
-  const svg = $('g'), r = svg.getBoundingClientRect();
-  if (!lastXY.size || !r.width) return;
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const p of lastXY.values()) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + NW); y1 = Math.max(y1, p.y + NH); }
+  const svg = $('g'), r = svg.getBoundingClientRect(), b = bounds();
+  if (!b || !r.width) return;
+  const { x0, y0, x1, y1 } = b;
+  view.touched = false;
   const pad = 30, w = x1 - x0 + pad * 2, h = y1 - y0 + pad * 2;
   view.k = Math.min(1.2, r.width / w, r.height / h);
   view.x = (r.width - (x1 - x0) * view.k) / 2 - x0 * view.k;
@@ -654,6 +773,8 @@ $('detail').addEventListener('click', e => {
   if (c) { e.preventDefault(); const t = (copyData[c.dataset.copy] || []).join('\n'); navigator.clipboard?.writeText(t).then(() => { c.textContent = 'Copied'; setTimeout(() => c.textContent = 'Copy', 1000); }); return; }
   const a = e.target.closest('a[data-n]'); if (a) setFocus(a.dataset.n);
 });
+$('layout').value = store.get('lineage.layout') || 'force';
+$('layout').addEventListener('change', () => { store.set('lineage.layout', $('layout').value); renderGraph(); });
 $('du').addEventListener('change', renderGraph);
 $('dd').addEventListener('change', renderGraph);
 $('btnFit').addEventListener('click', fit);
@@ -670,25 +791,40 @@ document.addEventListener('keydown', e => {
 // graph pan / zoom / click / hover
 (() => {
   const svg = $('g'); let drag = null;
-  svg.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false }; });
+  const world = e => { const r = svg.getBoundingClientRect(); return [(e.clientX - r.left - view.x) / view.k, (e.clientY - r.top - view.y) / view.k]; };
+  svg.addEventListener('pointerdown', e => {
+    const g = e.target.closest('.n');
+    drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false, id: g?.dataset.n, node: g && sim ? sim.byId.get(g.dataset.n) : null };
+  });
   window.addEventListener('pointermove', e => {
     if (!drag) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     if (!drag.moved && Math.hypot(dx, dy) < 4) return;
     if (!drag.moved) { drag.moved = true; svg.setPointerCapture?.(e.pointerId); svg.classList.add('drag'); }
+    if (drag.node && sim) {
+      [drag.node.fx, drag.node.fy] = world(e);
+      sim.dragging = true; view.touched = true; kick(0.3);
+      return;
+    }
+    view.touched = true;
     view.x = drag.vx + dx; view.y = drag.vy + dy; applyView();
   });
-  window.addEventListener('pointerup', e => {
+  window.addEventListener('pointerup', () => {
     if (!drag) return;
-    const moved = drag.moved; drag = null; svg.classList.remove('drag');
-    if (moved) return;
-    const g = e.target.closest?.('.n'); if (g) setFocus(g.dataset.n);
+    const { moved, id, node } = drag; drag = null; svg.classList.remove('drag');
+    if (sim) sim.dragging = false;
+    if (node && moved) {
+      // dragged nodes stay pinned where dropped until the graph is redrawn
+      sim?.gs[sim.nodes.indexOf(node)]?.classList.add('pinned');
+      return;
+    }
+    if (!moved && id) setFocus(id);
   });
   svg.addEventListener('wheel', e => {
     e.preventDefault();
     const r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
     const k = Math.min(3, Math.max(0.05, view.k * Math.exp(-e.deltaY * 0.0015)));
-    view.x = mx - (mx - view.x) * k / view.k; view.y = my - (my - view.y) * k / view.k; view.k = k; applyView();
+    view.x = mx - (mx - view.x) * k / view.k; view.y = my - (my - view.y) * k / view.k; view.k = k; view.touched = true; applyView();
   }, { passive: false });
   svg.addEventListener('mouseover', e => {
     const g = e.target.closest('.n'); if (!g) return;

@@ -8,19 +8,19 @@
 :root {
   --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f1f3f6; --border: #dde1e7; --text: #1b1f24; --muted: #6a7380;
   --accent: #3b5bdb; --accent-soft: #e7ecfd; --up: #1c7ed6; --down: #2b8a3e; --warn: #c2410c;
-  --edge: #b6bdc8; --edge-hi: #3b5bdb; --hover: #eef1f5; --mid: #868e96; --dot: #cfd4db;
+  --edge: #b6bdc8; --edge-hi: #3b5bdb; --hover: #eef1f5; --mid: #868e96; --dot: #cfd4db; --api: #ae3ec9;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111418; --panel: #181c21; --panel-2: #1f242b; --border: #2c333c; --text: #e4e7eb; --muted: #8b95a3;
     --accent: #7c95f5; --accent-soft: #232c4a; --up: #4dabf7; --down: #51cf66; --warn: #fb923c;
-    --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830; --mid: #8b95a3; --dot: #363e48;
+    --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830; --mid: #8b95a3; --dot: #363e48; --api: #da77f2;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111418; --panel: #181c21; --panel-2: #1f242b; --border: #2c333c; --text: #e4e7eb; --muted: #8b95a3;
   --accent: #7c95f5; --accent-soft: #232c4a; --up: #4dabf7; --down: #51cf66; --warn: #fb923c;
-  --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830; --mid: #8b95a3; --dot: #363e48;
+  --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830; --mid: #8b95a3; --dot: #363e48; --api: #da77f2;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -64,6 +64,7 @@ header .status { color: var(--muted); margin-left: auto; font-size: 12px; }
 .gbar label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
 .legend { margin-left: auto; display: flex; gap: 10px; color: var(--muted); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+.legend i.sq { border-radius: 1px; transform: rotate(45deg) scale(.8); }
 svg#g { flex: 1; width: 100%; min-height: 0; cursor: grab; user-select: none;
   background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.2px); background-size: 20px 20px; }
 svg#g.drag { cursor: grabbing; }
@@ -80,14 +81,16 @@ svg#g.drag { cursor: grabbing; }
 .n .tag { font-size: 9px; font-weight: 700; letter-spacing: .04em; }
 .n .tag.src { fill: var(--up); } .n .tag.leaf { fill: var(--down); }
 .n.dim { opacity: .35; }
-.n circle { fill: var(--mid); stroke: var(--panel); stroke-width: 1.5; }
-.n.k-src circle { fill: var(--up); } .n.k-leaf circle { fill: var(--down); } .n.k-iso circle { fill: var(--muted); }
-.n.focus circle { fill: var(--accent); stroke: var(--accent-soft); stroke-width: 5; }
-.n.match circle { stroke: var(--warn); stroke-width: 3; }
-.n:hover circle { stroke: var(--accent); stroke-width: 3; }
+.n .dot { fill: var(--mid); stroke: var(--panel); stroke-width: 1.5; }
+.n.k-src .dot { fill: var(--up); } .n.k-leaf .dot { fill: var(--down); } .n.k-iso .dot { fill: var(--muted); } .n.k-api .dot { fill: var(--api); }
+.n.k-api rect.box { stroke: color-mix(in srgb, var(--api) 55%, var(--border)); }
+.n .tag.api { fill: var(--api); }
+.n.focus .dot { fill: var(--accent); stroke: var(--accent-soft); stroke-width: 5; }
+.n.match .dot { stroke: var(--warn); stroke-width: 3; }
+.n:hover .dot { stroke: var(--accent); stroke-width: 3; }
 .n .lbl { fill: var(--text); font-size: 11px; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
 .n.focus .lbl { font-weight: 700; font-size: 12px; }
-.n.pinned circle { stroke-dasharray: 2 2; stroke: var(--text); }
+.n.pinned .dot { stroke-dasharray: 2 2; stroke: var(--text); }
 
 /* details */
 .detail { border-left: 1px solid var(--border); overflow: auto; background: var(--panel); padding: 14px 16px; }
@@ -96,6 +99,7 @@ svg#g.drag { cursor: grabbing; }
 .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; letter-spacing: .03em; }
 .badge.src { background: color-mix(in srgb, var(--up) 15%, transparent); color: var(--up); }
 .badge.leaf { background: color-mix(in srgb, var(--down) 15%, transparent); color: var(--down); }
+.badge.api { background: color-mix(in srgb, var(--api) 15%, transparent); color: var(--api); margin-right: 6px; }
 .badge.iso { background: var(--panel-2); color: var(--muted); }
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
 .stat { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; }
@@ -177,7 +181,7 @@ details.sec summary button { margin-left: auto; font-size: 11px; padding: 1px 6p
         <label>Downstream <select id="dd"><option>1</option><option>2</option><option>3</option><option>5</option><option value="99" selected>All</option></select></label>
         <button id="btnFit">Fit</button>
         <button id="btnAll">Whole graph</button>
-        <div class="legend"><span><i style="background:var(--up)"></i>Source (no upstream)</span><span><i style="background:var(--down)"></i>Leaf (no downstream)</span><span><i style="background:var(--accent)"></i>Selected</span></div>
+        <div class="legend"><span><i style="background:var(--up)"></i>Source (no upstream)</span><span><i style="background:var(--down)"></i>Leaf (no downstream)</span><span><i class="sq" style="background:var(--api)"></i>API / consumer</span><span><i style="background:var(--accent)"></i>Selected</span></div>
       </div>
       <svg id="g"><defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--edge)"/></marker><marker id="arh" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--edge-hi)"/></marker></defs><g id="vp"></g></svg>
       <div class="gmsg" id="gmsg"></div>
@@ -197,6 +201,7 @@ details.sec summary button { margin-left: auto; font-size: 11px; padding: 1px 6p
           <li><b>CSV / TSV</b> with columns <code>table,depends_on</code> (header optional; <code>source,target</code> / <code>from,to</code> / <code>parent,child</code> / <code>upstream,downstream</code> headers are recognised). Multiple deps in one cell can be separated by <code>;</code> or <code>|</code>.</li>
           <li><b>Arrows</b>: one per line, <code>raw.orders -> stg_orders -> fct_orders</code> (data flows left to right).</li>
           <li><b>JSON</b>: <code>{"table": ["dep1","dep2"]}</code>, <code>[{"table":"x","depends_on":[…]}]</code>, <code>[{"source":"a","target":"b"}]</code>, or a dbt <code>manifest.json</code>.</li>
+          <li><b>APIs</b>: prefix the name with <code>api:</code> (<code>api:orders-service,marts.fct_orders</code>), or use an <code>api,table</code> header, or add a <code>type</code> column / JSON field (<code>api</code>, <code>dashboard</code>, …). dbt exposures are picked up from the manifest.</li>
           <li><b>SQL</b>: <code>CREATE TABLE/VIEW … AS SELECT</code>, <code>INSERT INTO … SELECT</code>, <code>MERGE INTO … USING</code>. Reads <code>FROM</code>/<code>JOIN</code> and skips CTEs. dbt <code>ref()</code>/<code>source()</code> work too; for model files the file name is the table.</li>
         </ul>
       </div>
@@ -218,13 +223,28 @@ const store = {
 
 // ---------- graph model ----------
 // edges are [child, parent]: child depends on parent (data flows parent -> child)
-let G = { nodes: new Map(), edges: [], singles: [], label: '' };
+let G = { nodes: new Map(), edges: [], singles: [], types: {}, label: '' };
 
 function clean(s) { return String(s ?? '').trim().replace(/["`\[\]]/g, ''); }
 
-function build(edges, singles, label) {
+// Non-table node types (APIs, dashboards, …). Tables have no type.
+const TABLE_TYPES = new Set(['table', 'view', 'model', 'source', 'seed', 'snapshot', 'materialized_view', 'incremental', 'ephemeral']);
+const API_TYPES = new Set(['api', 'endpoint', 'service', 'application', 'rest', 'graphql', 'grpc']);
+function normType(t) {
+  t = String(t ?? '').trim().toLowerCase().replace(/\s+/g, '_');
+  if (!t || TABLE_TYPES.has(t)) return undefined;
+  return API_TYPES.has(t) ? 'api' : t;
+}
+const API_PREFIX = /^api\s*[:\/]\s*/i;
+const dispName = n => n.replace(API_PREFIX, '');
+
+function build(edges, singles, label, types = {}) {
   const nodes = new Map();
-  const get = n => { let x = nodes.get(n); if (!x) nodes.set(n, x = { name: n, up: new Set(), down: new Set() }); return x; };
+  const get = n => {
+    let x = nodes.get(n);
+    if (!x) nodes.set(n, x = { name: n, up: new Set(), down: new Set(), type: normType(types[n]) || (API_PREFIX.test(n) ? 'api' : undefined) });
+    return x;
+  };
   const uniq = [];
   for (const [c0, p0] of edges) {
     const c = clean(c0), p = clean(p0);
@@ -235,14 +255,18 @@ function build(edges, singles, label) {
     cn.up.add(p); pn.down.add(c); uniq.push([c, p]);
   }
   for (const s of singles) { const n = clean(s); if (n) get(n); }
-  G = { nodes, edges: uniq, singles: singles.map(clean).filter(Boolean), label };
+  const typed = {};
+  for (const n of nodes.values()) if (n.type) typed[n.name] = n.type;
+  G = { nodes, edges: uniq, singles: singles.map(clean).filter(Boolean), types: typed, label };
   for (const n of nodes.values()) n.kind = kindOf(n);
 }
-const kindOf = n => n.up.size === 0 && n.down.size === 0 ? 'iso' : n.up.size === 0 ? 'src' : n.down.size === 0 ? 'leaf' : 'mid';
+const kindOf = n => n.type ? 'api' : n.up.size === 0 && n.down.size === 0 ? 'iso' : n.up.size === 0 ? 'src' : n.down.size === 0 ? 'leaf' : 'mid';
 
 // ---------- parsers ----------
-const UP_KEYS = ['depends_on', 'dependencies', 'depends', 'upstream', 'parents', 'parent', 'sources', 'source', 'from', 'src', 'inputs', 'input', 'refs'];
-const DOWN_KEYS = ['table', 'table_name', 'name', 'model', 'downstream', 'child', 'target', 'to', 'dst', 'output', 'node', 'id'];
+const UP_KEYS = ['depends_on', 'dependencies', 'depends', 'upstream', 'parents', 'parent', 'sources', 'source', 'from', 'src', 'inputs', 'input', 'refs', 'tables', 'fed_by'];
+const API_KEYS = ['api', 'endpoint', 'service'];
+const DOWN_KEYS = [...API_KEYS, 'table', 'table_name', 'name', 'model', 'downstream', 'child', 'target', 'to', 'dst', 'output', 'node', 'id'];
+const TYPE_KEYS = ['type', 'kind', 'node_type', 'resource_type'];
 
 function splitList(v) {
   if (v == null) return [];
@@ -264,7 +288,13 @@ function parseJSON(obj, out) {
         if (dk == null) continue;
         const children = splitList(it[keys[dk]]);
         const parents = uk == null ? [] : splitList(it[keys[uk]]);
-        for (const c of children) { if (!parents.length) out.singles.push(c); for (const p of parents) out.edges.push([c, p]); }
+        const tk = keys[lower.findIndex(k => TYPE_KEYS.includes(k))];
+        const type = API_KEYS.includes(lower[dk]) ? 'api' : tk && it[tk];
+        for (const c of children) {
+          if (type) out.types[c] = type;
+          if (!parents.length) out.singles.push(c);
+          for (const p of parents) out.edges.push([c, p]);
+        }
       }
     }
   } else if (obj && typeof obj === 'object') {
@@ -272,6 +302,8 @@ function parseJSON(obj, out) {
       let deps = v;
       if (v && typeof v === 'object' && !Array.isArray(v)) {
         const key = Object.keys(v).find(x => UP_KEYS.includes(x.toLowerCase()));
+        const tk = Object.keys(v).find(x => TYPE_KEYS.includes(x.toLowerCase()));
+        if (tk) out.types[k] = v[tk];
         deps = key ? v[key] : [];
       }
       const ps = splitList(deps);
@@ -292,6 +324,9 @@ function parseManifest(m, out) {
   for (const [id, parents] of Object.entries(m.parent_map)) {
     if (skip(id)) continue;
     const c = name(id);
+    // exposures are the consumers: type "application" becomes an API, dashboards etc. keep their own type
+    const exp = (m.exposures || {})[id];
+    if (exp) out.types[c] = exp.type || 'exposure';
     const ps = parents.filter(p => !skip(p));
     if (!ps.length) out.singles.push(c);
     for (const p of ps) out.edges.push([c, name(p)]);
@@ -361,20 +396,25 @@ function parseDelimited(text, out) {
   const f = rest[0];
   const d = f.includes('\t') ? '\t' : f.includes(',') ? ',' : f.includes(';') ? ';' : f.includes('|') ? '|' : 'ws';
   const head = splitRow(f, d).map(h => h.toLowerCase().replace(/\s+/g, '_'));
-  let ci = 0, pi = [1], start = 0;
+  let ci = 0, pi = [1], start = 0, ti = -1, isApi = false;
   const isHead = head.some(h => UP_KEYS.includes(h) || DOWN_KEYS.includes(h));
   if (isHead) {
     start = 1;
-    // source/target, from/to, parent/child: the "up" key wins over a generic name key
+    // source/target, from/to, parent/child: the "up" key wins over a generic name key;
+    // an api/endpoint column wins over "table" (so "api,table" means the API is fed by the table)
+    ti = head.findIndex(h => TYPE_KEYS.includes(h));
     const u = head.findIndex(h => UP_KEYS.includes(h));
-    const c = head.findIndex((h, i) => i !== u && DOWN_KEYS.includes(h));
+    const c = DOWN_KEYS.map(k => head.indexOf(k)).find(i => i >= 0 && i !== u) ?? -1;
     ci = c >= 0 ? c : (u === 0 ? 1 : 0);
-    pi = u >= 0 ? [u] : head.map((_, i) => i).filter(i => i !== ci);
+    isApi = API_KEYS.includes(head[ci]);
+    pi = u >= 0 ? [u] : head.map((_, i) => i).filter(i => i !== ci && i !== ti);
   }
   for (let i = start; i < rest.length; i++) {
     const cells = splitRow(rest[i], d);
     const c = cells[ci];
     if (!c) continue;
+    if (isApi) out.types[c] = 'api';
+    else if (ti >= 0 && cells[ti]) out.types[c] = cells[ti];
     const idx = isHead ? pi : cells.map((_, j) => j).filter(j => j !== ci);
     const ps = idx.flatMap(j => splitList(cells[j]));
     if (!ps.length) out.singles.push(c);
@@ -396,13 +436,13 @@ function parseAny(text, filename, out) {
 }
 
 function loadFrom(items, label) {
-  const out = { edges: [], singles: [] };
+  const out = { edges: [], singles: [], types: {} };
   const kinds = new Set();
   try {
     for (const { text, name } of items) kinds.add(parseAny(text, name, out));
   } catch (e) { alert(e.message); return false; }
   if (!out.edges.length && !out.singles.length) { alert('No tables found in that input.'); return false; }
-  build(out.edges, out.singles, label + ' · ' + [...kinds].join('+'));
+  build(out.edges, out.singles, label + ' · ' + [...kinds].join('+'), out.types);
   persist(); $('banner').hidden = true;
   focusName = null; overview = false;
   refreshAll();
@@ -412,7 +452,7 @@ function loadFrom(items, label) {
 }
 
 function persist() {
-  const data = JSON.stringify({ e: G.edges, s: G.singles, l: G.label });
+  const data = JSON.stringify({ e: G.edges, s: G.singles, t: G.types, l: G.label });
   if (data.length < 4.5e6) store.set('lineage.data', data);
 }
 
@@ -427,13 +467,18 @@ function pickDefaultFocus() {
 }
 
 function splitName(n) { const i = n.lastIndexOf('.'); return i < 0 ? ['', n] : [n.slice(0, i + 1), n.slice(i + 1)]; }
+// [muted prefix, main label] for drawing a node; APIs drop the "api:" prefix and keep dots in their name
+const nodeLabel = n => G.nodes.get(n)?.type ? [G.nodes.get(n).type, dispName(n)] : splitName(n);
+const typeBadge = n => `<span class="badge api">${esc(n.type.toUpperCase())}</span>`;
 
 function refreshAll() {
-  const c = { all: 0, src: 0, leaf: 0, iso: 0 };
+  const c = { all: 0, src: 0, leaf: 0, iso: 0, api: 0 };
   for (const n of G.nodes.values()) { c.all++; if (n.kind in c) c[n.kind]++; }
-  $('status').textContent = `${c.all.toLocaleString()} tables · ${G.edges.length.toLocaleString()} dependencies · ${G.label}`;
-  const labels = { all: 'All', src: 'Sources', leaf: 'Leaves', iso: 'Isolated' };
-  const tips = { all: '', src: 'Nothing upstream: raw / root tables', leaf: 'Nothing depends on them: final outputs', iso: 'No dependencies either way' };
+  $('status').textContent = `${(c.all - c.api).toLocaleString()} tables${c.api ? ` · ${c.api.toLocaleString()} APIs` : ''} · ${G.edges.length.toLocaleString()} dependencies · ${G.label}`;
+  const labels = { all: 'All', src: 'Sources', leaf: 'Leaves', iso: 'Isolated', api: 'APIs' };
+  const tips = { all: '', src: 'Tables with nothing upstream: raw / root tables', leaf: 'Tables nothing depends on: final outputs', iso: 'Tables with no dependencies either way', api: 'APIs and other consumers (dashboards, exposures) fed by tables' };
+  if (!c.api) delete labels.api;
+  if (filter === 'api' && !c.api) filter = 'all';
   $('chips').innerHTML = Object.keys(labels).map(k => `<button class="chip ${filter === k ? 'on' : ''}" data-f="${k}" title="${tips[k]}">${labels[k]}<span class="n">${c[k]}</span></button>`).join('');
   renderList();
 }
@@ -449,8 +494,8 @@ function renderList() {
     : (a, b) => a.name.localeCompare(b.name));
   const LIM = 1000;
   $('list').innerHTML = arr.slice(0, LIM).map(n => {
-    const [s, t] = splitName(n.name);
-    return `<div class="item ${n.name === focusName ? 'sel' : ''}" data-n="${esc(n.name)}" title="${esc(n.name)}"><span class="nm"><span class="sch">${esc(s)}</span>${esc(t)}</span><span class="cnt"><span class="u">↑${n.up.size}</span> <span class="d">↓${n.down.size}</span></span></div>`;
+    const [s, t] = n.type ? ['', dispName(n.name)] : splitName(n.name);
+    return `<div class="item ${n.name === focusName ? 'sel' : ''}" data-n="${esc(n.name)}" title="${esc(n.name)}"><span class="nm">${n.type ? typeBadge(n) : ''}<span class="sch">${esc(s)}</span>${esc(t)}</span><span class="cnt"><span class="u">↑${n.up.size}</span> <span class="d">↓${n.down.size}</span></span></div>`;
   }).join('') + (arr.length > LIM ? `<div class="more">+${arr.length - LIM} more — refine the search</div>` : arr.length ? '' : '<div class="more">No matching tables</div>');
   highlightMatches(terms);
 }
@@ -571,12 +616,13 @@ function renderGraph() {
       const dx = Math.max(40, Math.abs(x2 - x1) / 2);
       e += `<path class="e" data-u="${esc(n)}" data-d="${esc(c)}" marker-end="url(#ar)" d="M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}"/>`;
     }
-    const node = G.nodes.get(n), [s, t] = splitName(n);
+    const node = G.nodes.get(n), [s, t] = node.type ? ['', dispName(n)] : splitName(n);
     const tag = node.kind === 'src' ? '<text class="tag src" x="' + (NW - 8) + '" y="14" text-anchor="end">SRC</text>'
-      : node.kind === 'leaf' ? '<text class="tag leaf" x="' + (NW - 8) + '" y="14" text-anchor="end">LEAF</text>' : '';
+      : node.kind === 'leaf' ? '<text class="tag leaf" x="' + (NW - 8) + '" y="14" text-anchor="end">LEAF</text>'
+      : node.kind === 'api' ? '<text class="tag api" x="' + (NW - 8) + '" y="14" text-anchor="end">' + esc(node.type.toUpperCase()) + '</text>' : '';
     const L = layer.get(n);
-    const stripe = overview || L === 0 ? '' : `<rect x="0" y="0" width="4" height="${NH}" rx="2" fill="var(--${L < 0 ? 'up' : 'down'})"/>`;
-    nds += `<g class="n ${n === focusName ? 'focus' : ''}" data-n="${esc(n)}" transform="translate(${p.x},${p.y})"><title>${esc(n)}\n↑ ${node.up.size} upstream · ↓ ${node.down.size} downstream</title><rect class="box" width="${NW}" height="${NH}" rx="6"/>${stripe}<text class="s" x="12" y="15">${esc(trunc(s, 30))}</text><text class="t" x="12" y="31">${esc(trunc(t, 27))}</text>${tag}</g>`;
+    const stripe = overview || L === 0 ? '' : `<rect x="0" y="0" width="4" height="${NH}" rx="2" fill="var(--${node.type ? 'api' : L < 0 ? 'up' : 'down'})"/>`;
+    nds += `<g class="n k-${node.kind} ${n === focusName ? 'focus' : ''}" data-n="${esc(n)}" transform="translate(${p.x},${p.y})"><title>${esc(n)}\n↑ ${node.up.size} upstream · ↓ ${node.down.size} downstream</title><rect class="box" width="${NW}" height="${NH}" rx="6"/>${stripe}<text class="s" x="12" y="15">${esc(trunc(s, 30))}</text><text class="t" x="12" y="31">${esc(trunc(t, 27))}</text>${tag}</g>`;
   }
   vp.innerHTML = e + nds;
   fit();
@@ -596,7 +642,7 @@ function renderForce(layer, xy) {
   const nodes = ids.map(n => {
     const g = G.nodes.get(n), deg = g.up.size + g.down.size;
     return { id: n, L: layer.get(n), x: layer.get(n) * SPAN + (Math.random() - .5) * 20, y: xy.get(n).y * 0.6 + (Math.random() - .5) * 20,
-      vx: 0, vy: 0, fx: null, fy: null, r: n === focusName ? 12 : 5 + Math.min(7, Math.sqrt(deg) * 1.6), kind: g.kind };
+      vx: 0, vy: 0, fx: null, fy: null, r: n === focusName ? 12 : g.type ? 8 : 5 + Math.min(7, Math.sqrt(deg) * 1.6), kind: g.kind };
   });
   const minL = Math.min(...nodes.map(n => n.L));
   if (overview) for (const n of nodes) { n.L -= minL; n.x = n.L * SPAN; }
@@ -608,8 +654,11 @@ function renderForce(layer, xy) {
   let e = '', nds = '';
   for (const l of links) e += `<path class="e" data-u="${esc(l.s.id)}" data-d="${esc(l.t.id)}" marker-end="url(#ar)"/>`;
   for (const n of nodes) {
-    const g = G.nodes.get(n.id), [, t] = splitName(n.id);
-    nds += `<g class="n k-${n.kind} ${n.id === focusName ? 'focus' : ''}" data-n="${esc(n.id)}"><title>${esc(n.id)}\n↑ ${g.up.size} upstream · ↓ ${g.down.size} downstream</title><circle r="${n.r}"/><text class="lbl" x="${n.r + 4}" y="4">${esc(trunc(t, 30))}</text></g>`;
+    const g = G.nodes.get(n.id), [, t] = nodeLabel(n.id);
+    const shape = g.type
+      ? `<rect class="dot" x="${-n.r}" y="${-n.r}" width="${n.r * 2}" height="${n.r * 2}" rx="2" transform="rotate(45)"/>`
+      : `<circle class="dot" r="${n.r}"/>`;
+    nds += `<g class="n k-${n.kind} ${n.id === focusName ? 'focus' : ''}" data-n="${esc(n.id)}"><title>${esc(n.id)}\n↑ ${g.up.size} upstream · ↓ ${g.down.size} downstream</title>${shape}<text class="lbl" x="${n.r + 4}" y="4">${esc(trunc(t, 30))}</text></g>`;
   }
   const vp = $('vp');
   vp.innerHTML = e + nds;
@@ -674,7 +723,7 @@ function kick(alpha) {
 function bounds() {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   if (sim) for (const p of sim.nodes) {
-    const lw = 4 + Math.min(30, splitName(p.id)[1].length) * 6.2;
+    const lw = 4 + Math.min(30, nodeLabel(p.id)[1].length) * 6.2;
     x0 = Math.min(x0, p.x - p.r); y0 = Math.min(y0, p.y - p.r); x1 = Math.max(x1, p.x + p.r + lw); y1 = Math.max(y1, p.y + p.r);
   }
   else for (const p of lastXY.values()) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + NW); y1 = Math.max(y1, p.y + NH); }
@@ -714,9 +763,11 @@ function renderDetail() {
   if (!focusName) { el.innerHTML = '<div class="sub">Select a table to see its dependencies.</div>'; return; }
   const n = G.nodes.get(focusName);
   const up = walk(focusName, 'up', 1e9), down = walk(focusName, 'down', 1e9);
-  const roots = [...up.keys()].filter(x => G.nodes.get(x).up.size === 0);
-  const leaves = [...down.keys()].filter(x => G.nodes.get(x).down.size === 0);
-  const badge = { src: '<span class="badge src">SOURCE</span>', leaf: '<span class="badge leaf">LEAF</span>', iso: '<span class="badge iso">ISOLATED</span>', mid: '' }[n.kind];
+  const roots = [...up.keys()].filter(x => G.nodes.get(x).up.size === 0 && !G.nodes.get(x).type);
+  const leaves = [...down.keys()].filter(x => G.nodes.get(x).down.size === 0 && !G.nodes.get(x).type);
+  const apis = [...down.keys()].filter(x => G.nodes.get(x).type);
+  const upTables = [...up.keys()].filter(x => !G.nodes.get(x).type);
+  const badge = n.type ? typeBadge(n) : { src: '<span class="badge src">SOURCE</span>', leaf: '<span class="badge leaf">LEAF</span>', iso: '<span class="badge iso">ISOLATED</span>', mid: '' }[n.kind];
   const list = (id, title, entries, open, note = '') => `
     <details class="sec" ${open ? 'open' : ''} data-sec="${id}">
       <summary>${title} <span class="n">${entries.length}</span><button data-copy="${id}">Copy</button></summary>
@@ -728,17 +779,36 @@ function renderDetail() {
   copyData = {
     du: [...n.up].sort(), dd: [...n.down].sort(),
     au: byDepth(up).map(x => x[0]), ad: byDepth(down).map(x => x[0]),
-    roots: roots.sort(), leaves: leaves.sort(),
+    roots: roots.sort(), leaves: leaves.sort(), apis: apis.sort(),
   };
+  const anyApis = Object.keys(G.types).length > 0;
+  if (n.type) {
+    // an API/consumer: what feeds it is what matters
+    el.innerHTML = `
+    <h2>${esc(dispName(focusName))}</h2>
+    <div class="sub">${badge}</div>
+    <div class="stats">
+      <div class="stat"><b style="color:var(--up)">${upTables.length}</b><span>tables feeding it</span></div>
+      <div class="stat"><b>${roots.length}</b><span>root sources behind it</span></div>
+    </div>
+    ${list('du', 'Fed directly by', sorted(n.up), true)}
+    ${list('roots', 'Root sources (upstream, no parents)', roots.map(x => [x, up.get(x)]), true)}
+    ${list('au', 'All upstream', byDepth(up), false)}
+    ${n.down.size ? list('dd', 'Direct downstream', sorted(n.down), false) : ''}
+    <div class="help" style="margin-top:10px">d<i>n</i> = shortest hop distance from this ${esc(n.type)}.</div>`;
+    return;
+  }
   el.innerHTML = `
     <h2>${esc(focusName)}</h2>
     <div class="sub">${badge}</div>
+    ${anyApis ? `<div class="stats" style="margin-bottom:0"><div class="stat" style="grid-column:span 2"><b style="color:var(--api)">${apis.length}</b><span>APIs / consumers fed by this table${apis.length ? ': ' + esc(trunc(apis.map(dispName).join(', '), 80)) : ''}</span></div></div>` : ''}
     <div class="stats">
       <div class="stat"><b style="color:var(--up)">${up.size}</b><span>all upstream</span></div>
       <div class="stat"><b style="color:var(--down)">${down.size}</b><span>all downstream</span></div>
       <div class="stat"><b>${roots.length}</b><span>root sources feeding it</span></div>
       <div class="stat"><b>${leaves.length}</b><span>leaf tables it feeds</span></div>
     </div>
+    ${anyApis ? list('apis', 'APIs fed (directly or indirectly)', apis.map(x => [x, down.get(x)]), apis.length > 0) : ''}
     ${list('du', 'Direct upstream', sorted(n.up), true)}
     ${list('dd', 'Direct downstream', sorted(n.down), true)}
     ${list('roots', 'Root sources (upstream, no parents)', roots.map(x => [x, up.get(x)]), false)}
@@ -851,7 +921,7 @@ $('pLoad').addEventListener('click', () => { if (loadFrom([{ text: $('paste').va
 $('btnSample').addEventListener('click', loadSample);
 $('btnSwap').addEventListener('click', () => {
   const keep = focusName;
-  build(G.edges.map(([c, p]) => [p, c]), G.singles, G.label.replace(/ \(swapped\)$/, '') + (G.label.endsWith('(swapped)') ? '' : ' (swapped)'));
+  build(G.edges.map(([c, p]) => [p, c]), G.singles, G.label.replace(/ \(swapped\)$/, '') + (G.label.endsWith('(swapped)') ? '' : ' (swapped)'), G.types);
   persist(); refreshAll(); if (keep) setFocus(keep); else renderGraph();
 });
 $('btnTheme').addEventListener('click', () => {
@@ -885,6 +955,9 @@ reporting.customer_ltv,marts.fct_orders;marts.dim_customers
 reporting.product_performance,marts.fct_orders;marts.dim_products
 reporting.funnel_conversion,marts.fct_sessions;marts.fct_orders
 exports.crm_sync,reporting.customer_ltv
+api:orders-service,marts.fct_orders;marts.dim_customers
+api:customer-profile,reporting.customer_ltv;marts.dim_customers
+api:product-catalog,marts.dim_products;reporting.product_performance
 raw.legacy_inventory,`;
   loadFrom([{ text: csv, name: 'sample.csv' }], 'sample');
   $('banner').hidden = false;
@@ -896,7 +969,7 @@ const th = store.get('lineage.theme'); if (th) document.documentElement.dataset.
 const saved = store.get('lineage.data');
 let booted = false;
 if (saved) {
-  try { const d = JSON.parse(saved); build(d.e, d.s, d.l); booted = G.nodes.size > 0; } catch { /* corrupt, fall back to sample */ }
+  try { const d = JSON.parse(saved); build(d.e, d.s, d.l, d.t); booted = G.nodes.size > 0; } catch { /* corrupt, fall back to sample */ }
 }
 if (booted) {
   refreshAll();

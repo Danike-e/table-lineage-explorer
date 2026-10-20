@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Table Lineage Explorer</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f1f3f6; --border: #dde1e7; --text: #1b1f24; --muted: #6a7380;
+  --accent: #3b5bdb; --accent-soft: #e7ecfd; --up: #1c7ed6; --down: #2b8a3e; --warn: #c2410c;
+  --edge: #b6bdc8; --edge-hi: #3b5bdb; --hover: #eef1f5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111418; --panel: #181c21; --panel-2: #1f242b; --border: #2c333c; --text: #e4e7eb; --muted: #8b95a3;
+    --accent: #7c95f5; --accent-soft: #232c4a; --up: #4dabf7; --down: #51cf66; --warn: #fb923c;
+    --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111418; --panel: #181c21; --panel-2: #1f242b; --border: #2c333c; --text: #e4e7eb; --muted: #8b95a3;
+  --accent: #7c95f5; --accent-soft: #232c4a; --up: #4dabf7; --down: #51cf66; --warn: #fb923c;
+  --edge: #3d4652; --edge-hi: #7c95f5; --hover: #222830;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button:hover { background: var(--hover); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+select { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
+header h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 650; }
+header .status { color: var(--muted); margin-left: auto; font-size: 12px; }
+.main { display: grid; grid-template-columns: 300px 1fr 360px; min-height: 0; }
+
+/* sidebar */
+.side { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+.side .controls { padding: 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); }
+.search { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.chip { padding: 3px 8px; border-radius: 999px; font-size: 12px; }
+.chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chip .n { color: var(--muted); margin-left: 3px; }
+.row-sort { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; }
+.list { overflow: auto; flex: 1; }
+.item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; border-bottom: 1px solid transparent; }
+.item:hover { background: var(--hover); }
+.item.sel { background: var(--accent-soft); }
+.item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .nm .sch { color: var(--muted); }
+.cnt { font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cnt .u { color: var(--up); } .cnt .d { color: var(--down); }
+.more { padding: 8px 12px; color: var(--muted); font-size: 12px; }
+
+/* graph */
+.graph { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.gbar { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; font-size: 12px; }
+.gbar label { color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.legend { margin-left: auto; display: flex; gap: 10px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+svg#g { flex: 1; width: 100%; min-height: 0; cursor: grab; user-select: none; }
+svg#g.drag { cursor: grabbing; }
+.gmsg { position: absolute; inset: 50px 0 0 0; display: flex; align-items: center; justify-content: center; color: var(--muted); pointer-events: none; text-align: center; padding: 20px; }
+.e { fill: none; stroke: var(--edge); stroke-width: 1.3; }
+.e.hi { stroke: var(--edge-hi); stroke-width: 2.2; }
+.n { cursor: pointer; }
+.n rect.box { fill: var(--panel); stroke: var(--border); stroke-width: 1; }
+.n:hover rect.box { stroke: var(--accent); }
+.n.focus rect.box { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+.n.match rect.box { stroke: var(--warn); stroke-width: 2; }
+.n .s { fill: var(--muted); font-size: 10px; }
+.n .t { fill: var(--text); font-size: 12px; font-weight: 550; }
+.n .tag { font-size: 9px; font-weight: 700; letter-spacing: .04em; }
+.n .tag.src { fill: var(--up); } .n .tag.leaf { fill: var(--down); }
+.n.dim { opacity: .35; }
+
+/* details */
+.detail { border-left: 1px solid var(--border); overflow: auto; background: var(--panel); padding: 14px 16px; }
+.detail h2 { font-size: 15px; margin: 0 0 2px; word-break: break-all; }
+.detail .sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+.badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-right: 4px; letter-spacing: .03em; }
+.badge.src { background: color-mix(in srgb, var(--up) 15%, transparent); color: var(--up); }
+.badge.leaf { background: color-mix(in srgb, var(--down) 15%, transparent); color: var(--down); }
+.badge.iso { background: var(--panel-2); color: var(--muted); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.stat { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; }
+.stat b { font-size: 18px; display: block; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 11px; }
+details.sec { border-top: 1px solid var(--border); padding: 8px 0; }
+details.sec summary { cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px; list-style: none; }
+details.sec summary::-webkit-details-marker { display: none; }
+details.sec summary::before { content: "▸"; color: var(--muted); font-size: 10px; transition: transform .1s; }
+details.sec[open] summary::before { transform: rotate(90deg); }
+details.sec summary .n { color: var(--muted); font-weight: 400; }
+details.sec summary button { margin-left: auto; font-size: 11px; padding: 1px 6px; font-weight: 400; }
+.links { display: flex; flex-direction: column; margin-top: 6px; }
+.links a { display: flex; gap: 6px; padding: 3px 6px; border-radius: 4px; color: var(--text); text-decoration: none; cursor: pointer; word-break: break-all; }
+.links a:hover { background: var(--hover); }
+.links a .dp { color: var(--muted); font-size: 11px; min-width: 22px; }
+.links .empty { color: var(--muted); padding: 3px 6px; }
+.filt { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+/* modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 10; padding: 16px; }
+.modal.on { display: flex; }
+.dialog { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; width: min(760px, 100%); max-height: 90vh; display: flex; flex-direction: column; }
+.dialog .hd { padding: 14px 16px; border-bottom: 1px solid var(--border); font-weight: 650; }
+.dialog .bd { padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.dialog .ft { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.dialog textarea { width: 100%; min-height: 240px; resize: vertical; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.help { color: var(--muted); font-size: 12px; }
+.help code { background: var(--panel-2); padding: 0 4px; border-radius: 3px; }
+.help pre { background: var(--panel-2); padding: 8px; border-radius: 6px; margin: 4px 0; overflow: auto; }
+.drop { position: fixed; inset: 0; background: color-mix(in srgb, var(--accent) 18%, transparent); border: 3px dashed var(--accent); display: none; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; z-index: 20; pointer-events: none; }
+.drop.on { display: flex; }
+.banner { background: var(--accent-soft); color: var(--text); padding: 6px 16px; font-size: 12px; border-bottom: 1px solid var(--border); }
+
+@media (max-width: 1000px) {
+  .app { height: auto; }
+  .main { grid-template-columns: 1fr; }
+  .side { border-right: 0; border-bottom: 1px solid var(--border); max-height: 45vh; }
+  .graph { height: 65vh; }
+  .detail { border-left: 0; border-top: 1px solid var(--border); }
+  .legend { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div>
+    <header>
+      <h1>Table Lineage Explorer</h1>
+      <button class="primary" id="btnFile">Load files…</button>
+      <button id="btnPaste">Paste…</button>
+      <button id="btnSample">Sample</button>
+      <button id="btnSwap" title="Flip every dependency direction if your file had columns the other way round">Swap direction</button>
+      <button id="btnTheme" title="Toggle theme">◐</button>
+      <input type="file" id="file" multiple hidden accept=".csv,.tsv,.txt,.json,.sql">
+      <span class="status" id="status"></span>
+    </header>
+    <div class="banner" id="banner" hidden>Showing sample data. Load a CSV, JSON, dbt <code>manifest.json</code> or SQL files (or drag them anywhere on the page).</div>
+  </div>
+  <div class="main">
+    <aside class="side">
+      <div class="controls">
+        <input class="search" id="q" placeholder="Search tables…  ( / )" autocomplete="off" spellcheck="false">
+        <div class="chips" id="chips"></div>
+        <div class="row-sort">Sort
+          <select id="sort">
+            <option value="name">Name</option>
+            <option value="down">Most downstream</option>
+            <option value="up">Most upstream</option>
+          </select>
+        </div>
+      </div>
+      <div class="list" id="list"></div>
+    </aside>
+    <section class="graph">
+      <div class="gbar">
+        <label>Upstream <select id="du"><option>1</option><option>2</option><option>3</option><option>5</option><option value="99" selected>All</option></select></label>
+        <label>Downstream <select id="dd"><option>1</option><option>2</option><option>3</option><option>5</option><option value="99" selected>All</option></select></label>
+        <button id="btnFit">Fit</button>
+        <button id="btnAll">Whole graph</button>
+        <div class="legend"><span><i style="background:var(--up)"></i>SRC = no upstream</span><span><i style="background:var(--down)"></i>LEAF = no downstream</span></div>
+      </div>
+      <svg id="g"><defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--edge)"/></marker><marker id="arh" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--edge-hi)"/></marker></defs><g id="vp"></g></svg>
+      <div class="gmsg" id="gmsg"></div>
+    </section>
+    <aside class="detail" id="detail"></aside>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="dialog">
+    <div class="hd">Paste lineage data</div>
+    <div class="bd">
+      <textarea id="paste" class="mono" spellcheck="false" placeholder="table,depends_on&#10;marts.fct_orders,staging.stg_orders&#10;staging.stg_orders,raw.orders"></textarea>
+      <div class="help">
+        Format is auto-detected:
+        <ul>
+          <li><b>CSV / TSV</b> with columns <code>table,depends_on</code> (header optional; <code>source,target</code> / <code>from,to</code> / <code>parent,child</code> / <code>upstream,downstream</code> headers are recognised). Multiple deps in one cell can be separated by <code>;</code> or <code>|</code>.</li>
+          <li><b>Arrows</b>: one per line, <code>raw.orders -> stg_orders -> fct_orders</code> (data flows left to right).</li>
+          <li><b>JSON</b>: <code>{"table": ["dep1","dep2"]}</code>, <code>[{"table":"x","depends_on":[…]}]</code>, <code>[{"source":"a","target":"b"}]</code>, or a dbt <code>manifest.json</code>.</li>
+          <li><b>SQL</b>: <code>CREATE TABLE/VIEW … AS SELECT</code>, <code>INSERT INTO … SELECT</code>, <code>MERGE INTO … USING</code>. Reads <code>FROM</code>/<code>JOIN</code> and skips CTEs. dbt <code>ref()</code>/<code>source()</code> work too; for model files the file name is the table.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ft"><button id="pCancel">Cancel</button><button class="primary" id="pLoad">Load</button></div>
+  </div>
+</div>
+<div class="drop" id="drop">Drop files to load lineage</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* full or blocked */ } },
+};
+
+// ---------- graph model ----------
+// edges are [child, parent]: child depends on parent (data flows parent -> child)
+let G = { nodes: new Map(), edges: [], singles: [], label: '' };
+
+function clean(s) { return String(s ?? '').trim().replace(/["`\[\]]/g, ''); }
+
+function build(edges, singles, label) {
+  const nodes = new Map();
+  const get = n => { let x = nodes.get(n); if (!x) nodes.set(n, x = { name: n, up: new Set(), down: new Set() }); return x; };
+  const uniq = [];
+  for (const [c0, p0] of edges) {
+    const c = clean(c0), p = clean(p0);
+    if (!c || !p) { if (c) get(c); if (p) get(p); continue; }
+    if (c === p) { get(c); continue; }
+    const cn = get(c), pn = get(p);
+    if (cn.up.has(p)) continue;
+    cn.up.add(p); pn.down.add(c); uniq.push([c, p]);
+  }
+  for (const s of singles) { const n = clean(s); if (n) get(n); }
+  G = { nodes, edges: uniq, singles: singles.map(clean).filter(Boolean), label };
+  for (const n of nodes.values()) n.kind = kindOf(n);
+}
+const kindOf = n => n.up.size === 0 && n.down.size === 0 ? 'iso' : n.up.size === 0 ? 'src' : n.down.size === 0 ? 'leaf' : 'mid';
+
+// ---------- parsers ----------
+const UP_KEYS = ['depends_on', 'dependencies', 'depends', 'upstream', 'parents', 'parent', 'sources', 'source', 'from', 'src', 'inputs', 'input', 'refs'];
+const DOWN_KEYS = ['table', 'table_name', 'name', 'model', 'downstream', 'child', 'target', 'to', 'dst', 'output', 'node', 'id'];
+
+function splitList(v) {
+  if (v == null) return [];
+  if (Array.isArray(v)) return v.flatMap(splitList);
+  if (typeof v === 'object') return splitList(v.nodes ?? v.name ?? v.table ?? v.id);
+  return String(v).split(/[;|,]/).map(s => s.trim()).filter(Boolean);
+}
+
+function parseJSON(obj, out) {
+  if (obj && obj.parent_map && obj.nodes) return parseManifest(obj, out);
+  if (Array.isArray(obj)) {
+    for (const it of obj) {
+      if (typeof it === 'string') out.singles.push(it);
+      else if (Array.isArray(it)) { const [c, ...ps] = it; if (!ps.length) out.singles.push(c); for (const p of ps) out.edges.push([c, p]); }
+      else if (it && typeof it === 'object') {
+        const keys = Object.keys(it), lower = keys.map(k => k.toLowerCase());
+        const dk = DOWN_KEYS.map(k => lower.indexOf(k)).find(i => i >= 0);
+        const uk = UP_KEYS.map(k => lower.indexOf(k)).find(i => i >= 0 && i !== dk);
+        if (dk == null) continue;
+        const children = splitList(it[keys[dk]]);
+        const parents = uk == null ? [] : splitList(it[keys[uk]]);
+        for (const c of children) { if (!parents.length) out.singles.push(c); for (const p of parents) out.edges.push([c, p]); }
+      }
+    }
+  } else if (obj && typeof obj === 'object') {
+    for (const [k, v] of Object.entries(obj)) {
+      let deps = v;
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        const key = Object.keys(v).find(x => UP_KEYS.includes(x.toLowerCase()));
+        deps = key ? v[key] : [];
+      }
+      const ps = splitList(deps);
+      if (!ps.length) out.singles.push(k);
+      for (const p of ps) out.edges.push([k, p]);
+    }
+  }
+}
+
+function parseManifest(m, out) {
+  const skip = id => /^(test|unit_test)\./.test(id);
+  const name = id => {
+    const n = m.nodes[id] || (m.sources || {})[id] || (m.exposures || {})[id] || (m.metrics || {})[id] || (m.semantic_models || {})[id];
+    if (!n) return id;
+    if (n.resource_type === 'source') return `${n.source_name}.${n.name}`;
+    return n.name;
+  };
+  for (const [id, parents] of Object.entries(m.parent_map)) {
+    if (skip(id)) continue;
+    const c = name(id);
+    const ps = parents.filter(p => !skip(p));
+    if (!ps.length) out.singles.push(c);
+    for (const p of ps) out.edges.push([c, name(p)]);
+  }
+}
+
+const SQL_NOT_TABLE = new Set(['select', 'lateral', 'unnest', 'table', 'values', 'dual', 'only', 'flatten', 'generate_series']);
+function parseSQL(text, filename, out) {
+  let s = text
+    .replace(/\{#[\s\S]*?#\}/g, ' ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/--[^\n]*/g, ' ')
+    .replace(/\{\{\s*ref\s*\(([^)]*)\)\s*\}\}/g, (m, a) => { const q = a.match(/['"]([^'"]+)['"]/g) || []; return ' ' + (q.length ? q[q.length - 1].slice(1, -1) : '') + ' '; })
+    .replace(/\{\{\s*source\s*\(([^)]*)\)\s*\}\}/g, (m, a) => ' ' + (a.match(/['"]([^'"]+)['"]/g) || []).map(x => x.slice(1, -1)).join('.') + ' ')
+    .replace(/\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\}/g, ' ')
+    .replace(/'(?:[^']|'')*'/g, "''");
+  const fileTarget = filename ? filename.replace(/^.*[\\/]/, '').replace(/\.sql$/i, '').toLowerCase() : null;
+  const ID = '([A-Za-z0-9_$."`\\[\\]]+)';
+  const norm = x => clean(x).toLowerCase();
+  for (const stmt of s.split(';')) {
+    if (!/\S/.test(stmt)) continue;
+    const tm = stmt.match(new RegExp('\\b(?:create\\s+(?:or\\s+replace\\s+)?(?:(?:global\\s+|local\\s+)?temp(?:orary)?\\s+|transient\\s+|secure\\s+|external\\s+)*(?:table|view|materialized\\s+view)\\s+(?:if\\s+not\\s+exists\\s+)?|insert\\s+(?:into|overwrite)\\s+(?:table\\s+)?|merge\\s+into\\s+)' + ID, 'i'));
+    const target = tm ? norm(tm[1]) : fileTarget;
+    if (!target) continue;
+    const ctes = new Set();
+    for (const m of stmt.matchAll(/(?:\bwith\s+(?:recursive\s+)?|,\s*)([A-Za-z0-9_$]+)\s+as\s*\(/gi)) ctes.add(m[1].toLowerCase());
+    const deps = new Set();
+    for (const m of stmt.matchAll(new RegExp('\\b(from|join|using)\\s+' + ID + '(\\s*\\()?', 'gi'))) {
+      if (m[3]) continue; // function call / subquery
+      const before = stmt.slice(Math.max(0, m.index - 80), m.index);
+      if (/\b(extract|trim|substring|position|overlay)\s*\([^()]*$/i.test(before) || /\bdistinct\s*$/i.test(before)) continue;
+      const t = norm(m[2]);
+      if (!t || SQL_NOT_TABLE.has(t) || ctes.has(t) || t === target || /^\d/.test(t)) continue;
+      deps.add(t);
+    }
+    if (!deps.size) out.singles.push(target);
+    for (const d of deps) out.edges.push([target, d]);
+  }
+}
+
+function splitRow(line, d) {
+  if (d === 'ws') return line.trim().split(/\s+/);
+  const r = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === d) { r.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  r.push(cur);
+  return r.map(x => x.trim());
+}
+
+function parseDelimited(text, out) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim() && !/^\s*#/.test(l));
+  if (!lines.length) return;
+  const rest = [];
+  for (const l of lines) {
+    if (l.includes('->')) {
+      const parts = l.split('->').map(x => x.trim()).filter(Boolean);
+      if (parts.length === 1) out.singles.push(parts[0]);
+      for (let i = 1; i < parts.length; i++) for (const c of splitList(parts[i])) for (const p of splitList(parts[i - 1])) out.edges.push([c, p]);
+    } else rest.push(l);
+  }
+  if (!rest.length) return;
+  const f = rest[0];
+  const d = f.includes('\t') ? '\t' : f.includes(',') ? ',' : f.includes(';') ? ';' : f.includes('|') ? '|' : 'ws';
+  const head = splitRow(f, d).map(h => h.toLowerCase().replace(/\s+/g, '_'));
+  let ci = 0, pi = [1], start = 0;
+  const isHead = head.some(h => UP_KEYS.includes(h) || DOWN_KEYS.includes(h));
+  if (isHead) {
+    start = 1;
+    // source/target, from/to, parent/child: the "up" key wins over a generic name key
+    const u = head.findIndex(h => UP_KEYS.includes(h));
+    const c = head.findIndex((h, i) => i !== u && DOWN_KEYS.includes(h));
+    ci = c >= 0 ? c : (u === 0 ? 1 : 0);
+    pi = u >= 0 ? [u] : head.map((_, i) => i).filter(i => i !== ci);
+  }
+  for (let i = start; i < rest.length; i++) {
+    const cells = splitRow(rest[i], d);
+    const c = cells[ci];
+    if (!c) continue;
+    const idx = isHead ? pi : cells.map((_, j) => j).filter(j => j !== ci);
+    const ps = idx.flatMap(j => splitList(cells[j]));
+    if (!ps.length) out.singles.push(c);
+    for (const p of ps) out.edges.push([c, p]);
+  }
+}
+
+function parseAny(text, filename, out) {
+  const ext = (filename || '').toLowerCase().split('.').pop();
+  const t = text.trim();
+  if (ext === 'json' || /^[\[{]/.test(t)) {
+    try { parseJSON(JSON.parse(t), out); return 'JSON'; } catch (e) { if (ext === 'json') throw new Error(`${filename}: invalid JSON (${e.message})`); }
+  }
+  const looksSQL = /\b(create\s+(or\s+replace\s+)?[\w\s]*?(table|view)\b|insert\s+(into|overwrite)\b|merge\s+into\b|select\b[\s\S]*?\bfrom\b)/i.test(t) || /\{\{\s*(ref|source)\s*\(/.test(t);
+  if (ext === 'sql' || looksSQL) {
+    parseSQL(text, ext === 'sql' ? filename : null, out); return 'SQL';
+  }
+  parseDelimited(text, out); return 'CSV';
+}
+
+function loadFrom(items, label) {
+  const out = { edges: [], singles: [] };
+  const kinds = new Set();
+  try {
+    for (const { text, name } of items) kinds.add(parseAny(text, name, out));
+  } catch (e) { alert(e.message); return false; }
+  if (!out.edges.length && !out.singles.length) { alert('No tables found in that input.'); return false; }
+  build(out.edges, out.singles, label + ' · ' + [...kinds].join('+'));
+  persist(); $('banner').hidden = true;
+  focusName = null; overview = false;
+  refreshAll();
+  const first = pickDefaultFocus();
+  if (first) setFocus(first); else renderGraph();
+  return true;
+}
+
+function persist() {
+  const data = JSON.stringify({ e: G.edges, s: G.singles, l: G.label });
+  if (data.length < 4.5e6) store.set('lineage.data', data);
+}
+
+// ---------- UI state ----------
+let focusName = null, overview = false, filter = 'all';
+const view = { x: 0, y: 0, k: 1 };
+
+function pickDefaultFocus() {
+  let best = null, score = -1;
+  for (const n of G.nodes.values()) { const s = n.up.size + n.down.size; if (s > score) { score = s; best = n.name; } }
+  return best;
+}
+
+function splitName(n) { const i = n.lastIndexOf('.'); return i < 0 ? ['', n] : [n.slice(0, i + 1), n.slice(i + 1)]; }
+
+function refreshAll() {
+  const c = { all: 0, src: 0, leaf: 0, iso: 0 };
+  for (const n of G.nodes.values()) { c.all++; if (n.kind in c) c[n.kind]++; }
+  $('status').textContent = `${c.all.toLocaleString()} tables · ${G.edges.length.toLocaleString()} dependencies · ${G.label}`;
+  const labels = { all: 'All', src: 'Sources', leaf: 'Leaves', iso: 'Isolated' };
+  const tips = { all: '', src: 'Nothing upstream: raw / root tables', leaf: 'Nothing depends on them: final outputs', iso: 'No dependencies either way' };
+  $('chips').innerHTML = Object.keys(labels).map(k => `<button class="chip ${filter === k ? 'on' : ''}" data-f="${k}" title="${tips[k]}">${labels[k]}<span class="n">${c[k]}</span></button>`).join('');
+  renderList();
+}
+
+function matches(name, terms) { const l = name.toLowerCase(); return terms.every(t => l.includes(t)); }
+
+function renderList() {
+  const terms = $('q').value.toLowerCase().split(/\s+/).filter(Boolean);
+  let arr = [...G.nodes.values()].filter(n => (filter === 'all' || n.kind === filter) && matches(n.name, terms));
+  const sort = $('sort').value;
+  arr.sort(sort === 'down' ? (a, b) => b.down.size - a.down.size || a.name.localeCompare(b.name)
+    : sort === 'up' ? (a, b) => b.up.size - a.up.size || a.name.localeCompare(b.name)
+    : (a, b) => a.name.localeCompare(b.name));
+  const LIM = 1000;
+  $('list').innerHTML = arr.slice(0, LIM).map(n => {
+    const [s, t] = splitName(n.name);
+    return `<div class="item ${n.name === focusName ? 'sel' : ''}" data-n="${esc(n.name)}" title="${esc(n.name)}"><span class="nm"><span class="sch">${esc(s)}</span>${esc(t)}</span><span class="cnt"><span class="u">↑${n.up.size}</span> <span class="d">↓${n.down.size}</span></span></div>`;
+  }).join('') + (arr.length > LIM ? `<div class="more">+${arr.length - LIM} more — refine the search</div>` : arr.length ? '' : '<div class="more">No matching tables</div>');
+  highlightMatches(terms);
+}
+
+// ---------- traversal ----------
+function walk(start, dir, maxDepth) {
+  const seen = new Map(); let frontier = [start], d = 0;
+  while (frontier.length && d < maxDepth) {
+    d++; const next = [];
+    for (const n of frontier) for (const m of G.nodes.get(n)[dir]) {
+      if (m === start || seen.has(m)) continue;
+      seen.set(m, d); next.push(m);
+    }
+    frontier = next;
+  }
+  return seen;
+}
+
+// ---------- layout ----------
+const NW = 220, NH = 40, CG = 80, RG = 10;
+
+function layered(layerOf) {
+  // layerOf: Map name -> integer column
+  const cols = new Map();
+  for (const [n, l] of layerOf) { if (!cols.has(l)) cols.set(l, []); cols.get(l).push(n); }
+  const keys = [...cols.keys()].sort((a, b) => a - b);
+  for (const k of keys) cols.get(k).sort();
+  const pos = new Map();
+  const index = () => { for (const k of keys) cols.get(k).forEach((n, i) => pos.set(n, i)); };
+  index();
+  const bary = (n, dir) => {
+    let s = 0, c = 0;
+    for (const m of G.nodes.get(n)[dir]) if (pos.has(m)) { s += pos.get(m) - (cols.get(layerOf.get(m)).length - 1) / 2; c++; }
+    return c ? s / c : null;
+  };
+  for (let pass = 0; pass < 4; pass++) {
+    const order = pass % 2 ? [...keys].reverse() : keys;
+    const dir = pass % 2 ? 'down' : 'up';
+    for (const k of order) {
+      const col = cols.get(k), len = col.length;
+      const b = new Map(col.map((n, i) => { const v = bary(n, dir); return [n, v == null ? i - (len - 1) / 2 : v]; }));
+      col.sort((x, y) => b.get(x) - b.get(y));
+      col.forEach((n, i) => pos.set(n, i));
+    }
+  }
+  const xy = new Map(), min = keys[0];
+  for (const k of keys) {
+    const col = cols.get(k);
+    col.forEach((n, i) => xy.set(n, { x: (k - min) * (NW + CG), y: (i - (col.length - 1) / 2) * (NH + RG) }));
+  }
+  return xy;
+}
+
+function longest(set, root, dir) {
+  // column distance = longest path to root within the set (keeps every edge pointing the same way)
+  const memo = new Map(), active = new Set();
+  const toward = dir === 'up' ? 'down' : 'up';
+  const f = n => {
+    if (n === root) return 0;
+    if (memo.has(n)) return memo.get(n);
+    if (active.has(n)) return 0;
+    active.add(n);
+    let best = 0;
+    for (const m of G.nodes.get(n)[toward]) if (m === root || set.has(m)) best = Math.max(best, f(m) + 1);
+    active.delete(n); memo.set(n, best || 1); return best || 1;
+  };
+  const out = new Map();
+  for (const n of set.keys()) out.set(n, f(n));
+  return out;
+}
+
+function focusLayout() {
+  const du = +$('du').value, dd = +$('dd').value;
+  const up = walk(focusName, 'up', du), down = walk(focusName, 'down', dd);
+  for (const n of up.keys()) down.delete(n); // cycles: keep on the upstream side
+  const lu = longest(up, focusName, 'up'), ld = longest(down, focusName, 'down');
+  const layer = new Map([[focusName, 0]]);
+  for (const [n, d] of lu) layer.set(n, -d);
+  for (const [n, d] of ld) layer.set(n, d);
+  return layer;
+}
+
+function overviewLayout() {
+  const memo = new Map(), active = new Set();
+  const f = n => {
+    if (memo.has(n)) return memo.get(n);
+    if (active.has(n)) return 0;
+    active.add(n);
+    let best = 0;
+    for (const p of G.nodes.get(n).up) best = Math.max(best, f(p) + 1);
+    active.delete(n); memo.set(n, best); return best;
+  };
+  const layer = new Map();
+  for (const n of G.nodes.keys()) layer.set(n, f(n));
+  return layer;
+}
+
+// ---------- render graph ----------
+let lastXY = new Map();
+const MAX_NODES = 1500;
+
+function renderGraph() {
+  const vp = $('vp'), msg = $('gmsg');
+  msg.textContent = '';
+  if (!G.nodes.size) { vp.innerHTML = ''; msg.textContent = 'Load some lineage data to begin.'; return; }
+  if (!overview && !focusName) { vp.innerHTML = ''; msg.textContent = 'Pick a table on the left.'; return; }
+  const layer = overview ? overviewLayout() : focusLayout();
+  if (layer.size > MAX_NODES) { vp.innerHTML = ''; msg.textContent = `${layer.size.toLocaleString()} tables is too many to draw. ${overview ? 'Focus on a single table instead.' : 'Lower the upstream/downstream depth.'}`; lastXY = new Map(); return; }
+  const xy = layered(layer); lastXY = xy;
+  let e = '', nds = '';
+  for (const [n, p] of xy) {
+    for (const c of G.nodes.get(n).down) {
+      const q = xy.get(c); if (!q) continue;
+      const x1 = p.x + NW, y1 = p.y + NH / 2, x2 = q.x - 2, y2 = q.y + NH / 2;
+      const dx = Math.max(40, Math.abs(x2 - x1) / 2);
+      e += `<path class="e" data-u="${esc(n)}" data-d="${esc(c)}" marker-end="url(#ar)" d="M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}"/>`;
+    }
+    const node = G.nodes.get(n), [s, t] = splitName(n);
+    const tag = node.kind === 'src' ? '<text class="tag src" x="' + (NW - 8) + '" y="14" text-anchor="end">SRC</text>'
+      : node.kind === 'leaf' ? '<text class="tag leaf" x="' + (NW - 8) + '" y="14" text-anchor="end">LEAF</text>' : '';
+    const L = layer.get(n);
+    const stripe = overview || L === 0 ? '' : `<rect x="0" y="0" width="4" height="${NH}" rx="2" fill="var(--${L < 0 ? 'up' : 'down'})"/>`;
+    nds += `<g class="n ${n === focusName ? 'focus' : ''}" data-n="${esc(n)}" transform="translate(${p.x},${p.y})"><title>${esc(n)}\n↑ ${node.up.size} upstream · ↓ ${node.down.size} downstream</title><rect class="box" width="${NW}" height="${NH}" rx="6"/>${stripe}<text class="s" x="12" y="15">${esc(trunc(s, 30))}</text><text class="t" x="12" y="31">${esc(trunc(t, 27))}</text>${tag}</g>`;
+  }
+  vp.innerHTML = e + nds;
+  fit();
+  highlightMatches($('q').value.toLowerCase().split(/\s+/).filter(Boolean));
+}
+const trunc = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+
+function highlightMatches(terms) {
+  const any = terms.length > 0;
+  for (const g of $('vp').querySelectorAll('.n')) g.classList.toggle('match', any && matches(g.dataset.n, terms) && g.dataset.n !== focusName);
+}
+
+function applyView() { $('vp').setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`); }
+function fit() {
+  const svg = $('g'), r = svg.getBoundingClientRect();
+  if (!lastXY.size || !r.width) return;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of lastXY.values()) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + NW); y1 = Math.max(y1, p.y + NH); }
+  const pad = 30, w = x1 - x0 + pad * 2, h = y1 - y0 + pad * 2;
+  view.k = Math.min(1.2, r.width / w, r.height / h);
+  view.x = (r.width - (x1 - x0) * view.k) / 2 - x0 * view.k;
+  view.y = (r.height - (y1 - y0) * view.k) / 2 - y0 * view.k;
+  applyView();
+}
+
+// ---------- details ----------
+function renderDetail() {
+  const el = $('detail');
+  if (!focusName) { el.innerHTML = '<div class="sub">Select a table to see its dependencies.</div>'; return; }
+  const n = G.nodes.get(focusName);
+  const up = walk(focusName, 'up', 1e9), down = walk(focusName, 'down', 1e9);
+  const roots = [...up.keys()].filter(x => G.nodes.get(x).up.size === 0);
+  const leaves = [...down.keys()].filter(x => G.nodes.get(x).down.size === 0);
+  const badge = { src: '<span class="badge src">SOURCE</span>', leaf: '<span class="badge leaf">LEAF</span>', iso: '<span class="badge iso">ISOLATED</span>', mid: '' }[n.kind];
+  const list = (id, title, entries, open, note = '') => `
+    <details class="sec" ${open ? 'open' : ''} data-sec="${id}">
+      <summary>${title} <span class="n">${entries.length}</span><button data-copy="${id}">Copy</button></summary>
+      ${note}
+      <div class="links">${entries.length ? entries.map(([x, d]) => `<a data-n="${esc(x)}">${d != null ? `<span class="dp">d${d}</span>` : ''}<span>${esc(x)}</span></a>`).join('') : '<span class="empty">None</span>'}</div>
+    </details>`;
+  const byDepth = m => [...m].sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]));
+  const sorted = s => [...s].sort().map(x => [x, null]);
+  copyData = {
+    du: [...n.up].sort(), dd: [...n.down].sort(),
+    au: byDepth(up).map(x => x[0]), ad: byDepth(down).map(x => x[0]),
+    roots: roots.sort(), leaves: leaves.sort(),
+  };
+  el.innerHTML = `
+    <h2>${esc(focusName)}</h2>
+    <div class="sub">${badge}</div>
+    <div class="stats">
+      <div class="stat"><b style="color:var(--up)">${up.size}</b><span>all upstream</span></div>
+      <div class="stat"><b style="color:var(--down)">${down.size}</b><span>all downstream</span></div>
+      <div class="stat"><b>${roots.length}</b><span>root sources feeding it</span></div>
+      <div class="stat"><b>${leaves.length}</b><span>leaf tables it feeds</span></div>
+    </div>
+    ${list('du', 'Direct upstream', sorted(n.up), true)}
+    ${list('dd', 'Direct downstream', sorted(n.down), true)}
+    ${list('roots', 'Root sources (upstream, no parents)', roots.map(x => [x, up.get(x)]), false)}
+    ${list('leaves', 'Leaf tables (downstream, no children)', leaves.map(x => [x, down.get(x)]), false)}
+    ${list('au', 'All upstream', byDepth(up), false)}
+    ${list('ad', 'All downstream', byDepth(down), false)}
+    <div class="help" style="margin-top:10px">d<i>n</i> = shortest hop distance from this table.</div>`;
+}
+let copyData = {};
+
+// ---------- actions ----------
+function setFocus(name, keepHash) {
+  if (!G.nodes.has(name)) return;
+  focusName = name; overview = false;
+  $('btnAll').classList.remove('primary');
+  renderGraph(); renderDetail();
+  for (const it of $('list').querySelectorAll('.item')) it.classList.toggle('sel', it.dataset.n === name);
+  const sel = $('list').querySelector('.item.sel'); if (sel) sel.scrollIntoView({ block: 'nearest' });
+  if (!keepHash) try { history.replaceState(null, '', '#' + encodeURIComponent(name)); } catch { /* file:// in some browsers */ }
+}
+
+$('chips').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; refreshAll(); });
+$('q').addEventListener('input', renderList);
+$('q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const f = $('list').querySelector('.item'); if (f) setFocus(f.dataset.n); }
+  if (e.key === 'Escape') { $('q').value = ''; renderList(); }
+});
+$('sort').addEventListener('change', renderList);
+$('list').addEventListener('click', e => { const it = e.target.closest('.item'); if (it) setFocus(it.dataset.n); });
+$('detail').addEventListener('click', e => {
+  const c = e.target.closest('[data-copy]');
+  if (c) { e.preventDefault(); const t = (copyData[c.dataset.copy] || []).join('\n'); navigator.clipboard?.writeText(t).then(() => { c.textContent = 'Copied'; setTimeout(() => c.textContent = 'Copy', 1000); }); return; }
+  const a = e.target.closest('a[data-n]'); if (a) setFocus(a.dataset.n);
+});
+$('du').addEventListener('change', renderGraph);
+$('dd').addEventListener('change', renderGraph);
+$('btnFit').addEventListener('click', fit);
+$('btnAll').addEventListener('click', () => {
+  overview = !overview;
+  $('btnAll').classList.toggle('primary', overview);
+  if (!overview && focusName) setFocus(focusName); else renderGraph();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $('q').focus(); $('q').select(); }
+  if (e.key === 'Escape') $('modal').classList.remove('on');
+});
+
+// graph pan / zoom / click / hover
+(() => {
+  const svg = $('g'); let drag = null;
+  svg.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: false }; });
+  window.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    if (!drag.moved) { drag.moved = true; svg.setPointerCapture?.(e.pointerId); svg.classList.add('drag'); }
+    view.x = drag.vx + dx; view.y = drag.vy + dy; applyView();
+  });
+  window.addEventListener('pointerup', e => {
+    if (!drag) return;
+    const moved = drag.moved; drag = null; svg.classList.remove('drag');
+    if (moved) return;
+    const g = e.target.closest?.('.n'); if (g) setFocus(g.dataset.n);
+  });
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    const k = Math.min(3, Math.max(0.05, view.k * Math.exp(-e.deltaY * 0.0015)));
+    view.x = mx - (mx - view.x) * k / view.k; view.y = my - (my - view.y) * k / view.k; view.k = k; applyView();
+  }, { passive: false });
+  svg.addEventListener('mouseover', e => {
+    const g = e.target.closest('.n'); if (!g) return;
+    const n = g.dataset.n;
+    for (const p of svg.querySelectorAll('.e')) { const on = p.dataset.u === n || p.dataset.d === n; p.classList.toggle('hi', on); p.setAttribute('marker-end', on ? 'url(#arh)' : 'url(#ar)'); }
+  });
+  svg.addEventListener('mouseout', e => {
+    if (!e.target.closest('.n')) return;
+    for (const p of svg.querySelectorAll('.e.hi')) { p.classList.remove('hi'); p.setAttribute('marker-end', 'url(#ar)'); }
+  });
+  new ResizeObserver(() => fit()).observe(svg);
+})();
+
+// loading
+async function loadFiles(files) {
+  const items = await Promise.all([...files].map(async f => ({ name: f.name, text: await f.text() })));
+  if (items.length) loadFrom(items, items.length === 1 ? items[0].name : `${items.length} files`);
+}
+$('btnFile').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', e => { loadFiles(e.target.files); e.target.value = ''; });
+$('btnPaste').addEventListener('click', () => { $('modal').classList.add('on'); $('paste').focus(); });
+$('pCancel').addEventListener('click', () => $('modal').classList.remove('on'));
+$('pLoad').addEventListener('click', () => { if (loadFrom([{ text: $('paste').value, name: '' }], 'pasted')) $('modal').classList.remove('on'); });
+$('btnSample').addEventListener('click', loadSample);
+$('btnSwap').addEventListener('click', () => {
+  const keep = focusName;
+  build(G.edges.map(([c, p]) => [p, c]), G.singles, G.label.replace(/ \(swapped\)$/, '') + (G.label.endsWith('(swapped)') ? '' : ' (swapped)'));
+  persist(); refreshAll(); if (keep) setFocus(keep); else renderGraph();
+});
+$('btnTheme').addEventListener('click', () => {
+  const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark'; store.set('lineage.theme', r.dataset.theme);
+});
+let dragDepth = 0;
+window.addEventListener('dragenter', e => { if (e.dataTransfer?.types.includes('Files')) { dragDepth++; $('drop').classList.add('on'); } });
+window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('drop').classList.remove('on'); } });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('drop').classList.remove('on'); if (e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
+
+function loadSample() {
+  const csv = `table,depends_on
+staging.stg_customers,raw.customers
+staging.stg_orders,raw.orders
+staging.stg_order_items,raw.order_items
+staging.stg_payments,raw.payments
+staging.stg_products,raw.products
+staging.stg_events,raw.web_events
+intermediate.int_order_totals,staging.stg_orders;staging.stg_order_items;staging.stg_products
+intermediate.int_payments_by_order,staging.stg_payments
+intermediate.int_sessions,staging.stg_events
+marts.dim_customers,staging.stg_customers;intermediate.int_order_totals
+marts.dim_products,staging.stg_products
+marts.fct_orders,intermediate.int_order_totals;intermediate.int_payments_by_order;marts.dim_customers
+marts.fct_sessions,intermediate.int_sessions;marts.dim_customers
+reporting.revenue_daily,marts.fct_orders
+reporting.customer_ltv,marts.fct_orders;marts.dim_customers
+reporting.product_performance,marts.fct_orders;marts.dim_products
+reporting.funnel_conversion,marts.fct_sessions;marts.fct_orders
+exports.crm_sync,reporting.customer_ltv
+raw.legacy_inventory,`;
+  loadFrom([{ text: csv, name: 'sample.csv' }], 'sample');
+  $('banner').hidden = false;
+  setFocus('marts.fct_orders');
+}
+
+// boot
+const th = store.get('lineage.theme'); if (th) document.documentElement.dataset.theme = th;
+const saved = store.get('lineage.data');
+let booted = false;
+if (saved) {
+  try { const d = JSON.parse(saved); build(d.e, d.s, d.l); booted = G.nodes.size > 0; } catch { /* corrupt, fall back to sample */ }
+}
+if (booted) {
+  refreshAll();
+  const h = decodeURIComponent(location.hash.slice(1));
+  setFocus(G.nodes.has(h) ? h : pickDefaultFocus(), true);
+} else loadSample();
+})();
+</script>
+</body>
+</html>
